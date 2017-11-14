@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
         int diskReadStressThreadNumber = intent.getIntExtra("disk_read_stress_thread_number", 0);
         int diskReadStressBufferSize = intent.getIntExtra("disk_read_stress_buffer_size", 0);   /* is by bytes */
-        int diskReadStressSleepTime = intent.getIntExtra("disk_read_stress_buffer_size", 0);    /* is by ms */
+        int diskReadStressSleepTime = intent.getIntExtra("disk_read_stress_sleep_time", 0);    /* is by ms */
 
         int diskWriteStressThreadNumber = intent.getIntExtra("disk_write_stress_thread_number", 0);
         int diskWriteStressBufferSize = intent.getIntExtra("disk_write_stress_buffer_size", 0); /* is by bytes */
