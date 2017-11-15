@@ -69,6 +69,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (memoryStress > 0) {
+            int numbers = memoryStress / 100;
+            for (int i = 0; i < numbers; ++i) {
+                startMemoryStress(memoryStress);
+            }
+            if (memoryStress % 100 != 0) {
+                startMemoryStress(memoryStress % 100);
+            }
         }
 
         if (diskReadStressThreadNumber > 0 && diskReadStressBufferSize > 0 && diskReadStressSleepTime >= 0) {
@@ -102,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         stressThreads = null;
+
+        stopMemoryStress();
 
         // stop memory stress
         Intent intent = new Intent("com.dillionmango.stress.stop_memory_stress");
