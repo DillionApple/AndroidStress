@@ -4,6 +4,10 @@ import os
 import sys
 import time
 import datetime
+import multiprocessing
+import signal
+
+stress_processes = []
 
 def run_cpu_stress(tn, tp):
     print("[Run CPU Stress]")
@@ -17,28 +21,48 @@ def run_memory_stress(mb):
     print(cmd)
     os.system(cmd)
 
-def run_disk_write_stress(tn, bs, st):
-    print("[Run Disk Write Stress]")
-    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_write_stress_thread_number {0} --ei disk_write_stress_buffer_size {1} --ei disk_write_stress_sleep_time {2}".format(tn, bs, st)
-    print(cmd)
-    os.system(cmd)
+# bolck_size if one of 4 16 64 256 1024 4096
+# load is from >0 to <=100
+def run_disk_write_stress(block_size, load):
+    print("[Run Disk Write Stress bs{0}, ld{1}]".format(block_size, load))
+    img_file_name = "W_{0}K.img".format(block_size)
+    while (True):
+        start_time = time.time() # in seconds
+        os.system("adb push {0} /storage/sdcard0/".format(img_file_name))
+        end_time = time.time() # in seconds
+        period = end_time - start_time # in seconds
+        sleep_time = (100 - load) * period / load
+        time.sleep(sleep_time)
 
-def run_disk_read_stress(tn, bs, st):
-    print("[Run Disk Read Stress]")
-    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_read_stress_thread_number {0} --ei disk_read_stress_buffer_size {1} --ei disk_read_stress_sleep_time {2}".format(tn, bs, st)
-    print(cmd)
-    os.system(cmd)
+# bolck_size if one of 4 16 64 256 1024 4096
+# load is from >0 to <=100
+def run_disk_read_stress(block_size, load):
+    print("[Run Disk Read Stress bs{0}, ld{1}]".format(block_size, load))
+    img_file_name = "R_{0}K.img".format(block_size)
+    while (True):
+        start_time = time.time() # in seconds
+        os.system("adb pull /storage/sdcard0/{0} ~/".format(img_file_name))
+        end_time = time.time() # in seconds
+        period = end_time - start_time # in seconds
+        sleep_time = (100 - load) * period / load
+        print("{0} {1} {2}".format(load, period, sleep_time))
+        time.sleep(sleep_time)
 
-def run_empty_stress():
-    print("[Run Empty Stress]")
+def clear_stress():
+    
+    global stress_processes
+
+    print("[Clear Stress]")    
     cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress"
     print(cmd)
     os.system(cmd)
+    for process in stress_processes:
+        process.terminate()
 
 def tap_the_device():
     print("[Start Tapping Device]")
     tap_time_list = []
-    for i in range(1000):
+    for i in range(200):
         startTime = time.time()
         os.system("adb shell input tap 10 100")
         endTime = time.time()
@@ -65,7 +89,7 @@ def tap_the_device():
 
 def top_the_device():
     print("[Start Topping Device]")
-    cmd = "adb shell top -n 5 | grep stress"
+    cmd = "adb shell top -n 5 -m 10"
     print(cmd)
     os.system(cmd)
 
@@ -79,11 +103,11 @@ def test_stress():
     top_the_device()
 
     # Disk Write
-    run_disk_write_stress(1, 4096, 0)
+    run_disk_write_stress(4096, 100)
     top_the_device()
 
     # Disk Read
-    run_disk_read_stress(1, 4096, 0)
+    run_disk_read_stress(4096, 100)
     top_the_device()
 
 def cpu_stress_routine(test=False):
@@ -114,7 +138,7 @@ def cpu_stress_routine(test=False):
             
         f.write("\n")
 
-def memory_stress_routine(test):
+def memory_stress_routine(test=False):
 
     if (not test):
         MAX_MEMORY = 500 # in MB
@@ -145,70 +169,71 @@ def memory_stress_routine(test):
     f.write("\n")
     
 # Disk Write Stress
-# thread 1
-# buffer size from 2^0 to 2^14
-# sleep time from 0, 10, 100, 1000
+# file block size is 4 16 64 256 1024 4096 K
+# load is from >0 to <=100
 
-def disk_write_stress_routine(test):
+def disk_write_stress_routine(test=False):
+
+    global stress_processes
     
     if (not test):
-        BS_STEPS = 15 # buffer size from 2^0 to 2^14
-        ST_STEPS = 4  # sleep time from 0, 10, 100, 1000
-        buffer_size = 1
+        BK_STEPS = 1
+        LD_STEPS = 10
+        file_block_size = 256 # in K
     else:
-        BS_STEPS = 1
-        ST_STEPS = 1
-        buffer_size = 4096
+        BK_STEPS = 1
+        LD_STEPS = 1
+        file_block_size = 256 # in K
         
-    for i in range(BS_STEPS):
-        sleep_time = 0
-        for j in range(ST_STEPS):
-            run_disk_write_stress(1, buffer_size, sleep_time)
-            time.sleep(3)
-
-            s = "disk_wbs{0} disk_wst{1},".format(buffer_size, sleep_time)
+    for i in range(BK_STEPS):
+        load = 10
+        for j in range(LD_STEPS):
+            process = multiprocessing.Process(target=run_disk_write_stress, args=(file_block_size, load))
+            process.start()
+            stress_processes.append(process)
+            time.sleep(0.1)
+            s = "disk_wbs{0} disk_wld{1},".format(file_block_size, load)
             f.write(s)
             print(s)
-
+            
             if (not test):
                 tap_the_device()
             else:
                 top_the_device()
-                
-            if (sleep_time == 0):
-                sleep_time = 10
-            else:
-                sleep_time *= 10
 
-            run_empty_stress()
-            time.sleep(5)
+            load += 10
 
-        buffer_size *= 2
+            clear_stress()
+            time.sleep(0.1)
+
+        file_block_size *= 4
         f.write("\n")
 
-# Disk Read Stress
-# thread 1
-# buffer size from 2^0 to 2^14
-# sleep time from 0, 10, 100, 1000
+# Disk Write Stress
+# file block size is 4 16 64 256 1024 4096 K
+# load is from >0 to <=100
 
-def disk_read_stress_routine(test):
+def disk_read_stress_routine(test=False):
 
-    if (not test):
-        BS_STEPS = 15 # buffer size from 2^0 to 2^14
-        ST_STEPS = 4  # sleep time from 0, 10, 100, 1000
-        buffer_size = 1
-    else:
-        BS_STEPS = 1
-        ST_STEPS = 1
-        buffer_size = 4096
+    global stress_should_run
     
-    for i in range(BS_STEPS):
-        sleep_time = 0
-        for j in range(ST_STEPS):
-            run_disk_read_stress(1, buffer_size, sleep_time)
-            time.sleep(3)
-
-            s = "disk_rbs{0} disk_rst{1},".format(buffer_size, sleep_time)
+    if (not test):
+        BK_STEPS = 1
+        LD_STEPS = 10
+        file_block_size = 256 # in K
+    else:
+        BK_STEPS = 1
+        LD_STEPS = 1
+        file_block_size = 256 # in K
+        
+    for i in range(BK_STEPS):
+        load = 10
+        for j in range(LD_STEPS):
+            process = multiprocessing.Process(target=run_disk_read_stress, args=(file_block_size, load))
+            process.start()
+            stress_processes.append(process)
+            time.sleep(0.1)
+            s = "disk_rbs{0} disk_rld{1},".format(file_block_size, load)
             f.write(s)
             print(s)
 
@@ -217,15 +242,12 @@ def disk_read_stress_routine(test):
             else:
                 top_the_device()
                 
-            if (sleep_time == 0):
-                sleep_time = 10
-            else:
-                sleep_time *= 10
+            load += 10
 
-            run_empty_stress()
-            time.sleep(5)
+            clear_stress()
+            time.sleep(0.1)
 
-        buffer_size *= 2
+        file_block_size *= 4
         f.write("\n")
 
 func_dict = {
@@ -233,10 +255,17 @@ func_dict = {
     'cpu': cpu_stress_routine,
     'memory': memory_stress_routine,
     'disk_write': disk_write_stress_routine,
-    'disk_read': disk_read_stress_routine    
+    'disk_read': disk_read_stress_routine
 }
 
+def terminate_program(a, b):
+    clear_stress()
+    exit(0)
+
 if __name__ == "__main__":
+
+    signal.signal(signal.SIGINT, terminate_program)
+    signal.signal(signal.SIGTERM, terminate_program)
 
     test_flag = False
 

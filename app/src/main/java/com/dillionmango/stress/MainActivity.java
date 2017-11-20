@@ -69,12 +69,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (memoryStress > 0) {
-            int numbers = memoryStress / 100;
+            int unit = 100; // 100M every time
+            int numbers = memoryStress / unit;
             for (int i = 0; i < numbers; ++i) {
-                startMemoryStress(memoryStress);
+                startMemoryStress(unit);
             }
-            if (memoryStress % 100 != 0) {
-                startMemoryStress(memoryStress % 100);
+            if (memoryStress % unit != 0) {
+                startMemoryStress(memoryStress % unit);
             }
         }
 
