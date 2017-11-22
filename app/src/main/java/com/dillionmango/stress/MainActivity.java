@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     public native void startMemoryStress(int memory_stress);
     public native void stopMemoryStress();
 
+
     ArrayList<StressThread> stressThreads = null;
     ArrayList<String> stressTypes = null;
 
@@ -43,9 +44,15 @@ public class MainActivity extends AppCompatActivity {
         int diskReadStressBufferSize = intent.getIntExtra("disk_read_stress_buffer_size", 0);   /* is by bytes */
         int diskReadStressSleepTime = intent.getIntExtra("disk_read_stress_sleep_time", 0);    /* is by ms */
 
+        int diskJNIReadStressThreadNumber = intent.getIntExtra("disk_jni_read_stress_thread_number", 0);
+        int diskJNIReadStressBufferSize = intent.getIntExtra("disk_jni_read_stress_buffer_size", 0);
+
         int diskWriteStressThreadNumber = intent.getIntExtra("disk_write_stress_thread_number", 0);
         int diskWriteStressBufferSize = intent.getIntExtra("disk_write_stress_buffer_size", 0); /* is by bytes */
         int diskWriteStressSleepTime = intent.getIntExtra("disk_write_stress_sleep_time", 0);   /* is by ms */
+
+        int diskJNIWriteStressThreadNumber = intent.getIntExtra("disk_jni_write_stress_thread_number", 0);
+        int diskJNIWRiteStressBufferSize = intent.getIntExtra("disk_jni_write_stress_buffer_size", 0);
 
         int networkStress = intent.getIntExtra("network_stress", 0);
         int fileOperationStressFlag = intent.getIntExtra("file_operation_stress", 0);
@@ -88,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         }
         if (diskWriteStressBufferSize > 0 && diskWriteStressSleepTime >= 0) {
             for (int i = 0; i < diskWriteStressThreadNumber; i++) {
-                StressThread thread = new DiskWriteStressThread(diskWriteStressBufferSize, diskWriteStressSleepTime);
+                StressThread thread = new DiskWriteStressThread(diskWriteStressBufferSize, diskWriteStressSleepTime, i);
                 thread.start();
                 stressThreads.add(thread);
             }
@@ -98,6 +105,21 @@ public class MainActivity extends AppCompatActivity {
             thread.start();
             stressThreads.add(thread);
         }
+        if (diskJNIReadStressThreadNumber > 0 && diskJNIReadStressBufferSize > 0) {
+            for (int i = 0; i < diskJNIReadStressThreadNumber; i++) {
+                StressThread thread = new DiskJNIReadStressThread(diskJNIReadStressBufferSize);
+                thread.start();
+                stressThreads.add(thread);
+            }
+        }
+        if (diskJNIWriteStressThreadNumber > 0 && diskJNIWRiteStressBufferSize > 0) {
+            for (int i = 0; i < diskJNIWriteStressThreadNumber; i++) {
+                StressThread thread = new DiskJNIWriteStressThread(i, diskJNIWRiteStressBufferSize);
+                thread.start();
+                stressThreads.add(thread);
+            }
+        }
+
     }
 
     @Override

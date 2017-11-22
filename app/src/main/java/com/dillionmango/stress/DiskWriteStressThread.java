@@ -20,14 +20,15 @@ import java.io.IOException;
  */
 public class DiskWriteStressThread extends StressThread {
 
-    private static final File fileToWrite = new File(Environment.getExternalStorageDirectory(), "com.dillionmango.stress.file_to_write");
+    private File fileToWrite;
 
     private int bufferSizeInBytes, sleepTimeInMs;
 
-    public DiskWriteStressThread(int bufferSizeInBytes, int sleepTimeInMs) {
+    public DiskWriteStressThread(int bufferSizeInBytes, int sleepTimeInMs, int fileNumber) {
         super();
         this.bufferSizeInBytes = bufferSizeInBytes;
         this.sleepTimeInMs = sleepTimeInMs;
+        fileToWrite = new File(Environment.getExternalStorageDirectory(), "com.dillionmango.stress.file_to_write" + fileNumber);
     }
 
     @Override
@@ -59,15 +60,13 @@ public class DiskWriteStressThread extends StressThread {
             throw new RuntimeException("IOException when create outputStream");
         }
 
-
-
         while (getShouldRun()) {
             try {
-                long currentTimeStamp = System.currentTimeMillis();
+                //long currentTimeStamp = System.currentTimeMillis();
                 outputStream.write(buffer);
-                fd.sync();
-                long writeTime = System.currentTimeMillis() - currentTimeStamp;
-                Log.d("Write time: ", Long.toString(writeTime));
+                //fd.sync();
+                //long writeTime = System.currentTimeMillis() - currentTimeStamp;
+                //Log.d("Write time: ", Long.toString(writeTime));
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new RuntimeException("IOException when write to file " + fileToWrite.getAbsolutePath());
@@ -81,6 +80,8 @@ public class DiskWriteStressThread extends StressThread {
         try {
             outputStream.close();
         } catch (IOException e) {}
+
+        fileToWrite.delete();
     }
 
 

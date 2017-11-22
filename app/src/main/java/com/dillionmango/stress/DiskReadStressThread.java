@@ -42,15 +42,14 @@ class DiskReadStressThread extends StressThread {
 
         InputStream inputStream = null;
 
-        inputStream = getRefreshedInputStream();
-
         while (getShouldRun()) {
             int len;
+            inputStream = getRefreshedInputStream();
             try {
-                long currentTimeStamp = System.currentTimeMillis();
+                //long currentTimeStamp = System.currentTimeMillis();
                 len = inputStream.read(buffer);
-                long readTime =  System.currentTimeMillis() - currentTimeStamp;
-                Log.d("Write time: ", Long.toString(readTime));
+                //long readTime =  System.currentTimeMillis() - currentTimeStamp;
+                //Log.d("Write time: ", Long.toString(readTime));
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new RuntimeException("IOException when reading file in " + fileToRead.getAbsolutePath());
@@ -69,11 +68,11 @@ class DiskReadStressThread extends StressThread {
                 } catch (InterruptedException e) {
                 }
             }
-        }
-        if (inputStream != null) {
-            try {
-                inputStream.close();
-            } catch (IOException e) { }
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) { }
+            }
         }
     }
 }

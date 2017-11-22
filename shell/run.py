@@ -26,31 +26,49 @@ def run_memory_stress(mb):
 
 # bolck_size if one of 4 16 64 256 1024 4096
 # load is from >0 to <=100
-def run_disk_write_stress(block_size, load):
-    print("[Run Disk Write Stress bs{0}, ld{1}]".format(block_size, load))
-    img_file_name = "W_{0}K.img".format(block_size)
+def run_disk_write_stress(filename, load):
+    print("[Run Disk Write Stress bs{0}, ld{1}]".format(filename, load))
     while (True):
         start_time = time.time() # in seconds
-        run_cmd("adb push {0} /storage/sdcard0/".format(img_file_name))
+        run_cmd("adb push {0} /storage/sdcard0/".format(filename))
         end_time = time.time() # in seconds
         period = end_time - start_time # in seconds
         sleep_time = (100 - load) * period / load
         if sleep_time > 0:
             time.sleep(sleep_time)
 
+def run_disk_write_stress2(buffer_size, sleep_time, thread_number = 1):
+    print("[Run Disk Write Stress 2 bs{0}, st{1}".format(buffer_size, sleep_time))
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_write_stress_thread_number {0} --ei disk_write_stress_buffer_size {1} --ei disk_write_stress_sleep_time {2}".format(thread_number, buffer_size, sleep_time)
+    run_cmd(cmd)
+
+def run_disk_jni_write_stress(buffer_size, thread_number = 1):
+    print("[Run Disk Write JNI Stress tn{0} bs{1}]".format(thread_number, buffer_size))
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_jni_write_stress_thread_number {0} --ei disk_jni_write_stress_buffer_size".format(thread_number, buffer_size)
+    run_cmd(cmd)
+
 # bolck_size if one of 4 16 64 256 1024 4096
 # load is from >0 to <=100
-def run_disk_read_stress(block_size, load):
-    print("[Run Disk Read Stress bs{0}, ld{1}]".format(block_size, load))
-    img_file_name = "R_{0}K.img".format(block_size)
+def run_disk_read_stress(filename, load):
+    print("[Run Disk Read Stress bs{0}, ld{1}]".format(filename, load))
     while (True):
         start_time = time.time() # in seconds
-        run_cmd("adb pull /storage/sdcard0/{0} ~/".format(img_file_name))
+        run_cmd("adb pull /storage/sdcard0/{0} ~/".format(filename))
         end_time = time.time() # in seconds
         period = end_time - start_time # in seconds
         sleep_time = (100 - load) * period / load
         if sleep_time > 0:
             time.sleep(sleep_time)
+
+def run_disk_read_stress2(buffer_size, sleep_time, thread_number = 1):
+    print("[Run Disk Read Stress 2 bs{0}, st{1}".format(buffer_size, sleep_time))
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_read_stress_thread_number {0} --ei disk_read_stress_buffer_size {1} --ei disk_read_stress_sleep_time {2}".format(thread_number, buffer_size, sleep_time)
+    run_cmd(cmd)
+
+def run_disk_jni_read_stress(buffer_size, thread_number = 1):
+    print("[Run Disk Read JNI Stress tn{0}, bs{1}]".format(thread_number, buffer_size))
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_jni_read_stress_thread_number {0} --ei disk_jni_read_stress_buffer_size {1}".format(thread_number, buffer_size)
+    run_cmd(cmd)
 
 def clear_stress():
     
@@ -64,31 +82,44 @@ def clear_stress():
         process.terminate()
 
 def tap_the_device():
+    TAP_TIMES = 60
     print("[Start Tapping Device]")
     tap_time_list = []
-    for i in range(200):
+    f.write("\n")
+    f.write("result:,")
+    for i in range(TAP_TIMES):
         startTime = time.time()
         os.system("adb shell input tap 10 100")
         endTime = time.time()
 
         s = "{0},".format(endTime - startTime)
         f.write(s)
-        print("[Tap time: {0}]".format(s))
+        f.flush()
+        print("[Tap time: {0} {1}/{2}]".format(s, i+1, TAP_TIMES))
         tap_time_list.append(endTime - startTime)
 
+    f.write("\n")
     s = "max {0},".format(max(tap_time_list))
     f.write(s)
-
     s = "avg {0},".format(sum(tap_time_list)/len(tap_time_list))
     f.write(s)
 
+    f.write("\n")
     sorted_tap_time_list = sorted(tap_time_list)
     f.write("sorted:,")
     for each in sorted_tap_time_list:
         f.write("{0},".format(each))
-    
+    f.write("\n")
+    sorted_tap_time_list.reverse()
+    f.write("reverse:,")
+    for each in sorted_tap_time_list:
+        f.write("{0},".format(each))
+
     f.write("\n")
     print('[End Tapping Device]')
+
+    f.flush()
+
 
 def top_the_device():
     print("[Start Topping Device]")
@@ -114,8 +145,8 @@ def test_stress():
 
 def cpu_stress_routine():
     
-    priorities = [1, 5, 10]
-    max_thread_number={1: 64, 5: 64, 10: 16}
+    priorities = [1]
+    max_thread_number={1: 8, 5: 64, 10: 6}
     thread_number_steps={1: 8, 5: 4, 10: 2}
     
     for i in priorities:
@@ -167,31 +198,27 @@ def memory_stress_routine():
 def disk_write_stress_routine():
 
     global stress_processes
-    
-    BK_STEPS = 1
-    LD_STEPS = 10
-    file_block_size = 256 # in K
+
+    WRITE_FILES = ["W_16B.img", "W_256B.img", "W_1K.img", "W_4K.img", "W_16K.img", "W_64K.img", "W_256K.img"]
         
-    for i in range(BK_STEPS):
-        load = 10
-        for j in range(LD_STEPS):
-            process = multiprocessing.Process(target=run_disk_write_stress, args=(file_block_size, load))
-            process.start()
-            stress_processes.append(process)
-            time.sleep(0.1)
-            s = "disk_wbs{0} disk_wld{1},".format(file_block_size, load)
-            f.write(s)
-            print(s)
+    for filename in WRITE_FILES:
+        load = 100
+        process = multiprocessing.Process(target=run_disk_write_stress, args=(filename, load))
+        process.start()
+        stress_processes.append(process)
+        time.sleep(0.1)
+        s = "disk_wbs{0} disk_wld{1},".format(filename, load)
+        f.write(s)
+        print(s)
             
-            tap_the_device()
+        tap_the_device()
 
-            load += 10
+        load += 10
 
-            clear_stress()
-            time.sleep(0.1)
+        clear_stress()
+        time.sleep(0.1)
 
-        file_block_size *= 4
-        f.write("\n")
+    f.write("\n")
 
 # Disk Write Stress
 # file block size is 4 16 64 256 1024 4096 K
@@ -199,31 +226,129 @@ def disk_write_stress_routine():
 
 def disk_read_stress_routine():
 
-    global stress_should_run
-    
-    BK_STEPS = 1
-    LD_STEPS = 10
-    file_block_size = 256 # in K
-        
-    for i in range(BK_STEPS):
-        load = 10
-        for j in range(LD_STEPS):
-            process = multiprocessing.Process(target=run_disk_read_stress, args=(file_block_size, load))
-            process.start()
-            stress_processes.append(process)
-            time.sleep(0.1)
-            s = "disk_rbs{0} disk_rld{1},".format(file_block_size, load)
+    global stress_processes
+
+    READ_FILES = ["R_16B.img", "R_256B.img", "R_1K.img", "R_4K.img", "R_16K.img", "R_64K.img", "R_256K.img"]
+
+    for filename in READ_FILES:
+        load = 100
+        process = multiprocessing.Process(target=run_disk_read_stress, args=(filename, load))
+        process.start()
+        stress_processes.append(process)
+        time.sleep(0.1)
+        s = "disk_rbs{0} disk_rld{1},".format(filename, load)
+        f.write(s)
+        print(s)
+
+        tap_the_device()
+
+        clear_stress()
+        time.sleep(0.1)
+
+    f.write("\n")
+
+def disk_read_stress_routine2():
+
+    BUFFER_SIZES = [16,64,256,1024,4096,16384,65536]
+
+    for buffer_size in BUFFER_SIZES:
+        run_disk_read_stress2(buffer_size, 0)
+        s = "disk_r2bs{0} disk_r2st{1}".format(buffer_size, 0)
+        f.write(s)
+        print(s)
+
+        tap_the_device()
+
+        clear_stress()
+        time.sleep(1)
+    f.write("\n")
+
+def disk_write_stress_routine2():
+
+    BUFFER_SIZES = [16,64,256,1024,4096,16384,65536, 4194304]
+
+    for buffer_size in BUFFER_SIZES:
+        run_disk_write_stress2(buffer_size, 0)
+        s = "disk_w2bs{0} disk_w2st{1}".format(buffer_size, 0)
+        f.write(s)
+        print(s)
+
+        tap_the_device()
+
+        clear_stress()
+        time.sleep(1)
+    f.write("\n")
+
+def disk_read_stress_multithread_routine():
+
+    BUFFER_SIZES = [256,4096,65536,4194304]
+    THREAD_NUMBERS = [4, 8, 16]
+
+    for buffer_size in BUFFER_SIZES:
+        for thread_number in THREAD_NUMBERS:
+            run_disk_read_stress2(buffer_size, 0, thread_number)
+            s = "disk_r_multi_bs{0} st{1} tn{2},".format(buffer_size, 0, thread_number)
             f.write(s)
             print(s)
 
             tap_the_device()
-                
-            load += 10
 
             clear_stress()
-            time.sleep(0.1)
+            time.sleep(5)
+        f.write("\n")
+        
+def disk_write_stress_multithread_routine():
 
-        file_block_size *= 4
+    BUFFER_SIZES = [256,4096,65536,4194304]
+    THREAD_NUMBERS = [4, 8, 16]
+
+    for buffer_size in BUFFER_SIZES:
+        for thread_number in THREAD_NUMBERS:
+            run_disk_write_stress2(buffer_size, 0, thread_number)
+            s = "disk_w_multi_bs{0} st{1} tn{2},".format(buffer_size, 0, thread_number)
+            f.write(s)
+            print(s)
+
+            tap_the_device()
+
+            clear_stress()
+            time.sleep(5)
+        f.write("\n")
+
+def disk_jni_read_stress_multithread_routine():
+
+    BUFFER_SIZES = [256,4096,65536,4194304]
+    THREAD_NUMBERS = [4, 8, 16]
+
+    for buffer_size in BUFFER_SIZES:
+        for thread_number in THREAD_NUMBERS:
+            run_disk_jni_read_stress(buffer_size, thread_number)
+            s = "disk_jni_r_bs{0} disk_jni_r_tn{1},".format(buffer_size, thread_number)
+            f.write(s)
+            print(s)
+            
+            tap_the_device()
+
+            clear_stress()
+            time.sleep(3)
+        f.write("\n")
+
+def disk_jni_write_stress_multithread_routine():
+    
+    BUFFER_SIZES = [256,4096,65536,4194304]
+    THREAD_NUMBERS = [4, 8, 16]
+
+    for buffer_size in BUFFER_SIZES:
+        for thread_number in THREAD_NUMBERS:
+            run_disk_jni_write_stress(buffer_size, thread_number)
+            s = "disk_jni_w_bs{0} disk_jni_w_tn{1},".format(buffer_size, thread_number)
+            f.write(s)
+            print(s)
+            
+            tap_the_device()
+
+            clear_stress()
+            time.sleep(3)
         f.write("\n")
 
 func_dict = {
@@ -231,7 +356,13 @@ func_dict = {
     'cpu': cpu_stress_routine,
     'memory': memory_stress_routine,
     'disk_write': disk_write_stress_routine,
-    'disk_read': disk_read_stress_routine
+    'disk_write2': disk_write_stress_routine2,
+    'disk_write_mt': disk_write_stress_multithread_routine,
+    'disk_jni_write': disk_jni_write_stress_multithread_routine,
+    'disk_read': disk_read_stress_routine,
+    'disk_read2': disk_read_stress_routine2,
+    'disk_read_mt': disk_read_stress_multithread_routine,
+    'disk_jni_read': disk_jni_read_stress_multithread_routine,
 }
 
 def terminate_program(a, b):
