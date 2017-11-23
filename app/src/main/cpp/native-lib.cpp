@@ -60,7 +60,7 @@ Java_com_dillionmango_stress_DiskJNIReadStressThread_readFromDisk(
         jobject /* this */,
         jint buffer_size) {
 
-    int fd = open("/sdcard/R_4096K.img", O_RDONLY);
+    int fd = open("/sdcard/com.dillionmango.stress.file_to_read", O_RDONLY);
     int cnt = read(fd, rs, buffer_size);
     close(fd);
 }

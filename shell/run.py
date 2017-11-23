@@ -6,6 +6,7 @@ import time
 import datetime
 import multiprocessing
 import signal
+import subprocess
 
 
 stress_processes = []
@@ -44,7 +45,7 @@ def run_disk_write_stress2(buffer_size, sleep_time, thread_number = 1):
 
 def run_disk_jni_write_stress(buffer_size, thread_number = 1):
     print("[Run Disk Write JNI Stress tn{0} bs{1}]".format(thread_number, buffer_size))
-    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_jni_write_stress_thread_number {0} --ei disk_jni_write_stress_buffer_size".format(thread_number, buffer_size)
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_jni_write_stress_thread_number {0} --ei disk_jni_write_stress_buffer_size {1}".format(thread_number, buffer_size)
     run_cmd(cmd)
 
 # bolck_size if one of 4 16 64 256 1024 4096
@@ -75,19 +76,30 @@ def clear_stress():
     global stress_processes
     
     print("[Clear Stress]")    
-    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress"
+    cmd = "adb shell am start -n com.dillionmango.stress/.MainActivity"
     run_cmd(cmd)
 
     for process in stress_processes:
         process.terminate()
 
-def tap_the_device():
-    TAP_TIMES = 60
+def tap_the_device(record_memory = False):
+    TAP_TIMES = 100
     print("[Start Tapping Device]")
     tap_time_list = []
     f.write("\n")
     f.write("result:,")
     for i in range(TAP_TIMES):
+        if (record_memory):
+            proc = subprocess.Popen(["adb shell free"], stdout=subprocess.PIPE, shell=True)
+            (out, err) = proc.communicate()
+            l = out.split()
+            free_memory = l[l.index("Mem:") + 3]
+            free_swap = l[l.index("Swap:") + 3]
+            s = "free_memory{0} free_swap{1},".format(free_memory, free_swap)
+            f.write(s)
+            f.flush()
+            print("[Memory: {0}]".format(s))
+
         startTime = time.time()
         os.system("adb shell input tap 10 100")
         endTime = time.time()
@@ -145,8 +157,8 @@ def test_stress():
 
 def cpu_stress_routine():
     
-    priorities = [1]
-    max_thread_number={1: 8, 5: 64, 10: 6}
+    priorities = [1, 5, 10]
+    max_thread_number={1: 256, 5: 16, 10: 6}
     thread_number_steps={1: 8, 5: 4, 10: 2}
     
     for i in priorities:
@@ -168,21 +180,25 @@ def cpu_stress_routine():
             
         f.write("\n")
 
+def cpu_stress_routine_repeat():
+
+    while True:
+        cpu_stress_routine()
+
 def memory_stress_routine():
 
-    MAX_MEMORY = 500 # in MB, change this
-    STEPS = 5
+    MAX_MEMORY = 1500 # in MB, change this
+    STEPS = 1
     memory_to_occupy = MAX_MEMORY / STEPS
 
     for i in range(STEPS):
         run_memory_stress(memory_to_occupy)
-        time.sleep(10)
     
         s = "memory{0},".format(memory_to_occupy)
         f.write(s)
         print(s)
 
-        tap_the_device()
+        tap_the_device(record_memory=True)
 
         clear_stress()
         time.sleep(5)
@@ -318,7 +334,7 @@ def disk_write_stress_multithread_routine():
 def disk_jni_read_stress_multithread_routine():
 
     BUFFER_SIZES = [256,4096,65536,4194304]
-    THREAD_NUMBERS = [4, 8, 16]
+    THREAD_NUMBERS = [1]
 
     for buffer_size in BUFFER_SIZES:
         for thread_number in THREAD_NUMBERS:
@@ -336,7 +352,7 @@ def disk_jni_read_stress_multithread_routine():
 def disk_jni_write_stress_multithread_routine():
     
     BUFFER_SIZES = [256,4096,65536,4194304]
-    THREAD_NUMBERS = [4, 8, 16]
+    THREAD_NUMBERS = [1]
 
     for buffer_size in BUFFER_SIZES:
         for thread_number in THREAD_NUMBERS:
@@ -354,6 +370,7 @@ def disk_jni_write_stress_multithread_routine():
 func_dict = {
     'run_stress_test': test_stress,
     'cpu': cpu_stress_routine,
+    'cpu_repeat': cpu_stress_routine_repeat,
     'memory': memory_stress_routine,
     'disk_write': disk_write_stress_routine,
     'disk_write2': disk_write_stress_routine2,
@@ -378,7 +395,8 @@ if __name__ == "__main__":
 
     file_name_prefix = "result_"
 
-    file_name = file_name_prefix + str(datetime.datetime.today()) + '.csv'
+    dt = datetime.datetime.now()
+    file_name = file_name_prefix + dt.strftime("%Y-%m-%d-%H-%M-%S") + '.csv'
     
 
     functions = []

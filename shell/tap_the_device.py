@@ -1,6 +1,7 @@
 import os, sys
 import datetime
 import time
+import signal
 
 def tap_the_device():
 
@@ -44,5 +45,12 @@ def tap_the_device():
     f.close()
     print('[End Tapping Device]')
 
+def handler(signum, frame):
+    print("Ctrl-c")
+    exit(0)
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGHUP, handler)
     tap_the_device()
