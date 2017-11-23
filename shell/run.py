@@ -75,7 +75,10 @@ def clear_stress():
     
     global stress_processes
     
-    print("[Clear Stress]")    
+    print("[Clear Stress]")
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress"
+    run_cmd(cmd)
+    time.sleep(1)
     cmd = "adb shell am start -n com.dillionmango.stress/.MainActivity"
     run_cmd(cmd)
 
@@ -83,7 +86,7 @@ def clear_stress():
         process.terminate()
 
 def tap_the_device(record_memory = False):
-    TAP_TIMES = 100
+    TAP_TIMES = 1
     print("[Start Tapping Device]")
     tap_time_list = []
     f.write("\n")
@@ -158,7 +161,7 @@ def test_stress():
 def cpu_stress_routine():
     
     priorities = [1, 5, 10]
-    max_thread_number={1: 256, 5: 16, 10: 6}
+    max_thread_number={1: 8, 5: 4, 10: 2}
     thread_number_steps={1: 8, 5: 4, 10: 2}
     
     for i in priorities:
@@ -184,6 +187,7 @@ def cpu_stress_routine_repeat():
 
     while True:
         cpu_stress_routine()
+        f.write("\n\n\n")
 
 def memory_stress_routine():
 
@@ -414,6 +418,7 @@ if __name__ == "__main__":
     f = open(file_name, "w")
 
     for each in functions:
+        clear_stress()
         each()
 
     f.close()

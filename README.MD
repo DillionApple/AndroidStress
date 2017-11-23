@@ -20,22 +20,32 @@ This is an android app that can generate cpu, memory, disk IO stress
 
 ### CPU
 
-* cpu_tn (or cpu_stress_thread_number)
-* cpu_tp (or cpu_stress_thread_priority)
+* cpu_tn
+* cpu_tp
 
 ### Memory
     
-* mem (or memory_stress)
+* mem
 
 ### Disk Write
     
-* disk_wtn (or disk_write_stress_thread_number)
-* disk_wbs (or disk_write_stress_buffer_size)
-* disk_wst (or disk_write_stress_sleep_time)
+* disk_wtn
+* disk_wbs
+* disk_wst
+* disk_w2tn
+* disk_w2bs
+* disk_w2st
+* disk_jni_wtn
+* disk_jni_wbs
 
 ### Disk Read
 
-* disk_rtn (or disk_read_stress_thread_number)
-* disk_rbs (or disk_read_stress_buffer_size)
-* disk_rst (or disk_read_stress_sleep_time)
+* disk_rtn
+* disk_rbs
+* disk_rst
+* disk_r2tn
+* disk_r2bs
+* disk_r2st
+* disk_jni_rtn
+* disk_jni_rbs
 
