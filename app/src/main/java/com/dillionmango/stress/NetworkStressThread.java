@@ -51,6 +51,7 @@ class NetworkStressThread extends StressThread {
         while (getShouldRun()) {
             try {
                 if (inputStream.read(buffer) == -1) {
+                    inputStream.close();
                     inputStream = getRefreshedInputStream(downloadURL);
                 }
             } catch (IOException e) {

@@ -109,13 +109,15 @@ def tap_the_device(record_memory = False):
             free_swap = int(l[l.index("SwapFree:") + 1])
             occupied_memory = total_memory - free_memory
             occupied_swap = total_swap - free_swap
+            occupied_memory_percentage = (1.0 * occupied_memory) / (1.0 * total_memory)
+            occupied_swap_percentage = (1.0 * occupied_swap) / (1.0 * total_swap)
 
             if (pre_occupied_memory - occupied_memory > 409600): # 400M
-                f.write("\n")
+                f.write("---------- restart app ----------\n")
 
             pre_occupied_memory = occupied_memory
             
-            s = "occupied_memory {0}, occupied_swap {1},".format(occupied_memory, occupied_swap)
+            s = "{0},{1},{2},{3},".format(occupied_memory, occupied_memory_percentage, occupied_swap, occupied_swap_percentage)
             f.write(s)
             f.flush()
             print("[Memory: {0}]".format(s))
@@ -126,6 +128,8 @@ def tap_the_device(record_memory = False):
 
         s = "{0},".format(endTime - startTime)
         f.write(s)
+        if (record_memory):
+            f.write("\n")
         f.flush()
         print("[Tap time: {0} {1}/{2}]".format(s, i+1, TAP_TIMES))
         tap_time_list.append(endTime - startTime)
@@ -211,8 +215,8 @@ def memory_stress_routine():
 
     # HUAWEI 2500
     # LIANXINAG 1500
-    MAX_MEMORY = 2500 # in MB, change this
-    STEPS = 1
+    MAX_MEMORY = 600 # in MB, change this
+    STEPS = 5
     memory_to_occupy = MAX_MEMORY / STEPS
 
     for i in range(STEPS):
