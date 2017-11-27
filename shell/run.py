@@ -71,6 +71,11 @@ def run_disk_jni_read_stress(buffer_size, thread_number = 1):
     cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei disk_jni_read_stress_thread_number {0} --ei disk_jni_read_stress_buffer_size {1}".format(thread_number, buffer_size)
     run_cmd(cmd)
 
+def run_network_stress(thread_number):
+    print("[Run Network Stress tn{0}]".format(thread_number))
+    cmd = "adb shell am broadcast -a com.dillionmango.stress.set_stress --ei network_stress_thread_number {0}".format(thread_number)
+    run_cmd(cmd)
+
 def clear_stress():
     
     global stress_processes
@@ -86,19 +91,31 @@ def clear_stress():
         process.terminate()
 
 def tap_the_device(record_memory = False):
-    TAP_TIMES = 1
+    TAP_TIMES = 50
     print("[Start Tapping Device]")
     tap_time_list = []
     f.write("\n")
     f.write("result:,")
+    pre_occupied_memory = 1024000000
     for i in range(TAP_TIMES):
         if (record_memory):
-            proc = subprocess.Popen(["adb shell free"], stdout=subprocess.PIPE, shell=True)
+            proc = subprocess.Popen(["adb shell cat /proc/meminfo"], stdout=subprocess.PIPE, shell=True)
             (out, err) = proc.communicate()
             l = out.split()
-            free_memory = l[l.index("Mem:") + 3]
-            free_swap = l[l.index("Swap:") + 3]
-            s = "free_memory{0} free_swap{1},".format(free_memory, free_swap)
+
+            total_memory = int(l[l.index("MemTotal:") + 1]) # in KB
+            free_memory = int(l[l.index("MemFree:") + 1])
+            total_swap = int(l[l.index("SwapTotal:") + 1])
+            free_swap = int(l[l.index("SwapFree:") + 1])
+            occupied_memory = total_memory - free_memory
+            occupied_swap = total_swap - free_swap
+
+            if (pre_occupied_memory - occupied_memory > 409600): # 400M
+                f.write("\n")
+
+            pre_occupied_memory = occupied_memory
+            
+            s = "occupied_memory {0}, occupied_swap {1},".format(occupied_memory, occupied_swap)
             f.write(s)
             f.flush()
             print("[Memory: {0}]".format(s))
@@ -160,12 +177,13 @@ def test_stress():
 
 def cpu_stress_routine():
     
-    priorities = [1, 5, 10]
-    max_thread_number={1: 8, 5: 4, 10: 2}
-    thread_number_steps={1: 8, 5: 4, 10: 2}
+    priorities = [5]
+    start_thread_number={1: 1, 5: 1, 10: 2}
+    max_thread_number={1: 12, 5: 4, 10: 8}
+    thread_number_steps={1: 1, 5: 1, 10: 1}
     
     for i in priorities:
-        thread_number = thread_number_steps[i]
+        thread_number = start_thread_number[i]
         while (thread_number <= max_thread_number[i]):
             run_cpu_stress(thread_number, i)
             time.sleep(10)
@@ -185,13 +203,15 @@ def cpu_stress_routine():
 
 def cpu_stress_routine_repeat():
 
-    while True:
+    for i in range(5):
         cpu_stress_routine()
         f.write("\n\n\n")
 
 def memory_stress_routine():
 
-    MAX_MEMORY = 1500 # in MB, change this
+    # HUAWEI 2500
+    # LIANXINAG 1500
+    MAX_MEMORY = 2500 # in MB, change this
     STEPS = 1
     memory_to_occupy = MAX_MEMORY / STEPS
 
@@ -337,8 +357,8 @@ def disk_write_stress_multithread_routine():
 
 def disk_jni_read_stress_multithread_routine():
 
-    BUFFER_SIZES = [256,4096,65536,4194304]
-    THREAD_NUMBERS = [1]
+    BUFFER_SIZES = [16, 64, 256, 1024, 4096, 16384, 65536, 4194304]
+    THREAD_NUMBERS = [1, 2, 3, 4]
 
     for buffer_size in BUFFER_SIZES:
         for thread_number in THREAD_NUMBERS:
@@ -355,8 +375,8 @@ def disk_jni_read_stress_multithread_routine():
 
 def disk_jni_write_stress_multithread_routine():
     
-    BUFFER_SIZES = [256,4096,65536,4194304]
-    THREAD_NUMBERS = [1]
+    BUFFER_SIZES = [16, 64, 256, 1024, 4096, 16384, 65536, 4194304]
+    THREAD_NUMBERS = [1, 2, 3, 4]
 
     for buffer_size in BUFFER_SIZES:
         for thread_number in THREAD_NUMBERS:
@@ -370,6 +390,24 @@ def disk_jni_write_stress_multithread_routine():
             clear_stress()
             time.sleep(3)
         f.write("\n")
+
+def network_stress_routine():
+
+    MIN_THREAD_NUMBER = 1
+    MAX_THREAD_NUMBER = 16
+    STEP_LENGTH = 4
+
+    for thread_number in range(MIN_THREAD_NUMBER, MAX_THREAD_NUMBER + 1):
+        run_network_stress(thread_number)
+        s = "net_tn{0},".format(thread_number)
+        f.write(s)
+        print(s)
+
+        tap_the_device()
+
+        clear_stress()
+        time.sleep(1)
+    f.write("\n")
 
 func_dict = {
     'run_stress_test': test_stress,

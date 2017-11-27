@@ -13,13 +13,28 @@ import java.net.URL;
  */
 class NetworkStressThread extends StressThread {
 
-    public NetworkStressThread(int load) {
+    public NetworkStressThread() {
         super();
+    }
+
+    public InputStream getRefreshedInputStream(URL downloadURL) {
+        HttpURLConnection connection;
+        try {
+            connection = (HttpURLConnection) downloadURL.openConnection();
+            connection.setConnectTimeout(10 * 1000);
+            connection.connect();
+            if (connection.getResponseCode() != 200) {
+                throw new IOException("Connection return code is not 200");
+            } else {
+                return connection.getInputStream();
+            }
+        } catch(IOException e) {
+            throw new RuntimeException("IOException when connecting to remote server");
+        }
     }
 
     @Override
     public void run() {
-        int runTime = 500 * 10 / 100;
 
         String downloadURLString = "http://weixin.qq.com/cgi-bin/download302?check=false&uin=&stype=&promote=&fr=&lang=zh_CN&ADTAG=&url=android16";
         URL downloadURL;
@@ -30,46 +45,27 @@ class NetworkStressThread extends StressThread {
             throw new RuntimeException("MalformedURLException when create URL object of " + downloadURLString);
         }
 
-        InputStream inputStream = null;
-        byte[] buffer = new byte[100 * 1024];
+        InputStream inputStream = getRefreshedInputStream(downloadURL);
+        byte[] buffer = new byte[10 * 1024 * 1024];
 
         while (getShouldRun()) {
-
-            long startTimeStamp = SystemClock.currentThreadTimeMillis();
-            long currentTimeStamp = SystemClock.currentThreadTimeMillis();
-            HttpURLConnection connection;
-
             try {
-                connection = (HttpURLConnection) downloadURL.openConnection();
-                connection.setConnectTimeout(10 * 1000);
-                connection.connect();
-                if (connection.getResponseCode() == 200) {
-                    inputStream = connection.getInputStream();
-
-                    while (currentTimeStamp - startTimeStamp < runTime) {
-                        int len = inputStream.read(buffer);
-                        if (len == -1) {
-                            break;
-                        }
-                        currentTimeStamp = SystemClock.currentThreadTimeMillis();
-                    }
+                if (inputStream.read(buffer) == -1) {
+                    inputStream = getRefreshedInputStream(downloadURL);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new RuntimeException("IOException when reading data from url " + downloadURLString);
             }
-
-            try {
-                sleep(500 - runTime);
-            } catch (InterruptedException e) {}
-
-            if (inputStream!= null) {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {}
-            }
-
         }
+
+        if (inputStream!= null) {
+            try {
+                inputStream.close();
+            } catch (IOException e) {}
+        }
+
+
     }
 
 }

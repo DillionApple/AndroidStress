@@ -17,7 +17,7 @@ public class MainActivity extends AppCompatActivity {
         System.loadLibrary("native-lib");
     }
 
-    public native void startMemoryStress(int memory_stress);
+    public native int startMemoryStress(int memory_stress);
     public native void stopMemoryStress();
 
 
@@ -54,7 +54,9 @@ public class MainActivity extends AppCompatActivity {
         int diskJNIWriteStressThreadNumber = intent.getIntExtra("disk_jni_write_stress_thread_number", 0);
         int diskJNIWRiteStressBufferSize = intent.getIntExtra("disk_jni_write_stress_buffer_size", 0);
 
-        int networkStress = intent.getIntExtra("network_stress", 0);
+        int diskWriteStressWithLoadLoad = intent.getIntExtra("disk_write_stress_with_load_load", 0);
+
+        int networkStressThreadNumber = intent.getIntExtra("network_stress_thread_number", 0);
         int fileOperationStressFlag = intent.getIntExtra("file_operation_stress", 0);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
@@ -78,11 +80,17 @@ public class MainActivity extends AppCompatActivity {
         if (memoryStress > 0) {
             int unit = 100; // 100M every time
             int numbers = memoryStress / unit;
+            int actural_memory_occupied = 0;
+
             for (int i = 0; i < numbers; ++i) {
-                startMemoryStress(unit);
+                if (startMemoryStress(unit) == 0) {
+                    actural_memory_occupied += unit;
+                }
             }
             if (memoryStress % unit != 0) {
-                startMemoryStress(memoryStress % unit);
+                if (startMemoryStress(memoryStress % unit) == 0) {
+                    actural_memory_occupied += memoryStress % unit;
+                }
             }
         }
 
@@ -100,14 +108,16 @@ public class MainActivity extends AppCompatActivity {
                 stressThreads.add(thread);
             }
         }
-        if (networkStress > 0) {
-            StressThread thread = new NetworkStressThread(networkStress);
-            thread.start();
-            stressThreads.add(thread);
+        if (networkStressThreadNumber > 0) {
+            for (int i = 0; i < networkStressThreadNumber; i++) {
+                StressThread thread = new NetworkStressThread();
+                thread.start();
+                stressThreads.add(thread);
+            }
         }
         if (diskJNIReadStressThreadNumber > 0 && diskJNIReadStressBufferSize > 0) {
             for (int i = 0; i < diskJNIReadStressThreadNumber; i++) {
-                StressThread thread = new DiskJNIReadStressThread(diskJNIReadStressBufferSize);
+                StressThread thread = new DiskJNIReadStressThread(i ,diskJNIReadStressBufferSize);
                 thread.start();
                 stressThreads.add(thread);
             }
@@ -119,7 +129,11 @@ public class MainActivity extends AppCompatActivity {
                 stressThreads.add(thread);
             }
         }
-
+        if (diskWriteStressWithLoadLoad > 0) {
+            StressThread thread = new DiskWriteStressWithLoadThread(diskWriteStressWithLoadLoad);
+            thread.start();
+            stressThreads.add(thread);
+        }
     }
 
     @Override

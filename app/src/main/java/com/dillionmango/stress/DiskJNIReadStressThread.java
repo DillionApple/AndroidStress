@@ -6,12 +6,13 @@ package com.dillionmango.stress;
 
 public class DiskJNIReadStressThread extends StressThread {
 
-    private int bufferSize;
+    private int bufferSize, fileNumber;
 
-    public native void readFromDisk(int buffer_size);
+    public native void readFromDisk(int file_number, int buffer_size);
 
-    public DiskJNIReadStressThread(int bufferSize) {
+    public DiskJNIReadStressThread(int fileNumber, int bufferSize) {
         super();
+        this.fileNumber = fileNumber;
         this.bufferSize = bufferSize;
     }
 
@@ -19,7 +20,7 @@ public class DiskJNIReadStressThread extends StressThread {
     public void run() {
         super.run();
         while (getShouldRun()) {
-            readFromDisk(bufferSize);
+            readFromDisk(fileNumber, bufferSize);
         }
     }
 }

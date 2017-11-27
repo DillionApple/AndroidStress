@@ -8,7 +8,10 @@ push_files = [
     'R_16K.img',
     'R_64K.img',
     'R_256K.img',
-    'com.dillionmango.stress.file_to_read'
+    'com.dillionmango.stress.file_to_read0',
+    'com.dillionmango.stress.file_to_read1',
+    'com.dillionmango.stress.file_to_read2',
+    'com.dillionmango.stress.file_to_read3',
 ]
 
 for each in push_files:

@@ -21,7 +21,7 @@ static char ws[MAX_LEN+1];
 static bool wsInited = false;
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT int JNICALL
 Java_com_dillionmango_stress_MainActivity_startMemoryStress(
         JNIEnv *env,
         jobject /* this */, jint memory_stress) {
@@ -29,7 +29,7 @@ Java_com_dillionmango_stress_MainActivity_startMemoryStress(
     int mem_size = 1024 * 1024 * memory_stress;
     char *mem = (char *)std::malloc(mem_size * sizeof(char));
     if (mem == NULL) {
-        return;
+        return -1;
     }
     for (int i = 0; i < mem_size; ++i) {
         mem[i] = 10;
@@ -38,6 +38,7 @@ Java_com_dillionmango_stress_MainActivity_startMemoryStress(
     pthread_mutex_lock(&mutex);
     mem_blocks[mem_blocks_count++] = mem;
     pthread_mutex_unlock(&mutex);
+    return 0;
 }
 
 extern "C"
@@ -58,11 +59,18 @@ void
 Java_com_dillionmango_stress_DiskJNIReadStressThread_readFromDisk(
         JNIEnv *env,
         jobject /* this */,
+        jint file_number,
         jint buffer_size) {
-
-    int fd = open("/sdcard/com.dillionmango.stress.file_to_read", O_RDONLY);
+    static int files[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // 32
+    if (files[file_number] == -1) {
+        char filename[256];
+        memset(filename, 0, sizeof(filename));
+        sprintf(filename, "%s%d", "/sdcard/com.dillionmango.stress.file_to_read", file_number);
+        files[file_number] = open(filename, O_RDONLY);
+    }
+    int fd = files[file_number];
     int cnt = read(fd, rs, buffer_size);
-    close(fd);
+    lseek(fd, 0, SEEK_SET);
 }
 
 extern "C"
@@ -72,11 +80,14 @@ Java_com_dillionmango_stress_DiskJNIWriteStressThread_writeToDisk(
         jobject /* this */,
         jint file_number,
         jint buffer_size) {
-    char filename[256];
-    memset(filename, 0, sizeof(filename));
-    sprintf(filename, "%s%d", "/sdcard/com.dillionmango.stress.file_to_write", file_number);
-
-    int fd = open(filename, O_RDWR | O_CREAT, 00777);
+    static int files[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // 32
+    if (files[file_number] == -1) {
+        char filename[256];
+        memset(filename, 0, sizeof(filename));
+        sprintf(filename, "%s%d", "/sdcard/com.dillionmango.stress.file_to_write", file_number);
+        files[file_number] = open(filename, O_RDWR | O_CREAT, 00777);
+    }
+    int fd = files[file_number];
     int cnt = write(fd, ws, buffer_size);
-    close(fd);
+    lseek(fd, 0, SEEK_SET);
 }

@@ -11,6 +11,7 @@ public class DiskJNIWriteStressThread extends StressThread {
     public native void writeToDisk(int file_number, int buffer_size);
 
     public DiskJNIWriteStressThread(int fileNumber, int bufferSize) {
+        super();
         this.fileNumber = fileNumber;
         this.bufferSize = bufferSize;
     }
