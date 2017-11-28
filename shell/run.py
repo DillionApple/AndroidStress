@@ -216,7 +216,7 @@ def memory_stress_routine():
     # HUAWEI 2500
     # LIANXINAG 1500
     MAX_MEMORY = 600 # in MB, change this
-    STEPS = 5
+    STEPS = 2
     memory_to_occupy = MAX_MEMORY / STEPS
 
     for i in range(STEPS):
@@ -426,6 +426,7 @@ func_dict = {
     'disk_read2': disk_read_stress_routine2,
     'disk_read_mt': disk_read_stress_multithread_routine,
     'disk_jni_read': disk_jni_read_stress_multithread_routine,
+    'network': network_stress_routine,
 }
 
 def terminate_program(a, b):
