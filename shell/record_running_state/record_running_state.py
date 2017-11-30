@@ -146,9 +146,10 @@ if __name__ == '__main__':
                 new_package = list(new_packages_set - origin_packages_set)[0]
                 print(new_package)
                 open_app(new_package)
-                sleep(10)
+                sleep(20)
                 press_home_button()
-                for i in range(10):
+                for i in range(600):
+                    pr_f.write("{0},".format(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")))
                     other_f.write("{0},".format(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")))
                     record_threads(new_package)
                     record_memory()
@@ -164,7 +165,12 @@ if __name__ == '__main__':
                 other_f.close()
                 uninstall_app(new_package)
 
-    
 
-                
-        
+# install app
+# open app
+# wait for use's response
+# start the recorder app
+# loop to fetch thread infos
+# copy the diskio info back to computer
+# end the app
+# uninstall the app
