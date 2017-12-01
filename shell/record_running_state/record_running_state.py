@@ -1,7 +1,8 @@
 import os
 import subprocess
 import datetime
-from time import sleep
+import time
+import threading
 
 def run_cmd(cmd):
     print(cmd)
@@ -37,20 +38,41 @@ def record_threads(package_name):
                 tree.append(each.split()[1])
         i += 1
 
-    priority_count_dict = {}
+    draft_string = run_cmd("adb shell top -t -n 1")
+    top_l = draft_string.split("\r\n")
+
+    threads_dict = {} # pid: [percent, thread_name]
+
+    for each in top_l:
+        try:
+            each_l = each.split()
+            threads_dict[each_l[1]] = [int(each_l[3][:-1]), ]
+        except:
+            print("Pass: {}".format(each))    
+
+    priority_count_dict = {} # priority: [count, percentage]
     threads_set = set(tree)
     for each in l:
         pid = each.split()[1]
         if pid in threads_set:
+            cpu_percent = 0
+            try:
+                cpu_percent = threads_dict[pid]
+            except Exception as e:
+                print(e.message)
+                cpu_percent = 0
+                
             priority = each.split()[5]
             if priority in priority_count_dict:
-                priority_count_dict[priority] += 1
+                priority_count_dict[priority][0] += 1
+                priority_count_dict[priority][1] += cpu_percent
             else:
-                priority_count_dict[priority] = 1
-
+                priority_count_dict[priority] = [1, cpu_percent]
+    
+    pr_f.write("{0}\n".format(time.time()))
     for index in sorted(priority_count_dict):
-        pr_f.write("{0},{1}\n".format(index, priority_count_dict[index]))
-    pr_f.write("---,---\n")
+        pr_f.write("{0},{1},{2}\n".format(index, priority_count_dict[index][0], priority_count_dict[index][1]))
+    pr_f.write("---,---,---\n")
     
 
 def record_memory():
@@ -94,6 +116,7 @@ def record_disk_io(package_name):
 
     print(total_rchar, total_wchar, total_read_bytes, total_write_bytes)
 
+    other_f.write("{0},".format(time.time()))
     other_f.write("{0},{1},".format(total_rchar, total_read_bytes))
     other_f.write("{0},{1}\n".format(total_wchar, total_write_bytes))
 
@@ -115,11 +138,18 @@ def press_home_button():
     run_cmd("adb shell input keyevent 3")
     run_cmd("adb shell input keyevent 3")
 
+def record_diskio_thread_function(package_name):
+
+    global should_run
+
+    while (should_run):
+        record_disk_io(package_name)
 
 if __name__ == '__main__':
 
     global pr_f
     global other_f
+    global should_run
 
     dt = datetime.datetime.now()
 
@@ -137,8 +167,8 @@ if __name__ == '__main__':
                 pr_f = open(pr_file_name, "w")
                 other_f = open(other_file_name, "w")
 
-                pr_f.write("priority,count\n")
-                other_f.write("time,occupied_memory,occupied_percentage,rchar,rbytes,wchar,wbytes\n")
+                pr_f.write("number, time, priority, count, cpu_percentage, count of threads using cpu\n")
+                other_f.write("time,rchar,rbytes,wchar,wbytes\n")
 
                 origin_packages_set = get_packages_set()
                 install_app(each)
@@ -146,15 +176,18 @@ if __name__ == '__main__':
                 new_package = list(new_packages_set - origin_packages_set)[0]
                 print(new_package)
                 open_app(new_package)
-                sleep(20)
+                raw_input("After you finish opening the app, tap ENTER")
+                time.sleep(0)
                 press_home_button()
-                for i in range(600):
-                    pr_f.write("{0},".format(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")))
-                    other_f.write("{0},".format(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")))
+                
+                # run record threads thread
+                should_run = True
+                record_diskio_thread = threading.Thread(target=record_diskio_thread_function, args=(new_package, ))
+                record_diskio_thread.start()
+                for i in range(150):
                     record_threads(new_package)
-                    record_memory()
-                    record_disk_io(new_package)
-                    
+                should_run = False
+                time.sleep(60)
                 pr_f.close()
                 other_f.close()
                 uninstall_app(new_package)
